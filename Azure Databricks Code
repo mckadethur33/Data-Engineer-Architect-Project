@@ -1,0 +1,23 @@
+## Cmd 1: Data Lake Storage Connection Info
+lake_account_name = "DataLakeG2"
+lake_container_name = "FT"
+lake_relative_path = "DVDRental/Film/ReleaseYear=2009"
+lake_sas_token = r"?st=2022-01-04T02%3A34%3A327&se=2022-01-04T03%3A34%3A00Z&sp=rl&sv=2022-01-03&sr=c&sfg=XlJVWA7fWXCSxCKqJs8psM0hvscoRqF2fs%N3D"
+
+## Cmd 2: Data Lake Storage Connection
+wasbs_path = 'wasbs://%s@%s.datalake.core.windows.net/%s' % (lake_container_name, lake_account_name, lake_relative_path)
+spark.conf.set('fs.azure.sas.%s.%s.datalake.core.windows.net' % (lake_container_name, lake_account_name), lake_sas_token)
+print('Remote data lake path: ' + wasbs_path)
+
+## Cmd 3: Create Data Frame and temporary view
+df = spark.read.parquet(wasbs_path)
+print('Register the DataFrame as a SQL temporary view: source')
+df.createOrReplaceTempView('source')
+
+## Cmd 4: Create Spark Job
+df.count()
+
+## Cmd 5: SQL Select TOP 10
+
+%%sql
+SELECT * FROM source LIMIT 10
