@@ -1,0 +1,68 @@
+
+
+"""
+The following is an example my skills for Python and Pyspark to show how I would go about extracting data
+from a PostgreSQL server and then proceed to transform it.
+"""
+
+import pyspark
+
+#Create Spark session
+spark = pyspark.sql.SparkSession \
+    .builder \
+    .appName("Python Spark SQL basic example") \
+    .config('spark.driver.extraClassPath', "/Users/User/Downloads/postgresql-42.3.1.jar") \
+    .getOrCreate()
+
+#Read Payment table
+def extract_payment_df():
+    payment_df = spark.read \
+        .format("jdbc") \
+        .option("dbtable", "payment") \
+        .option("user", "postgres") \
+        .option("password","<password>") \
+        .option("url","jdbc:postgresql://localhost:5432/dvdrental") \
+        .option("driver", "org.postgresql.Driver") \
+        .load()
+    return payment_df
+
+#Read Staff table
+def extract_staff_df():
+    staff_df = spark.read \
+        .format("jdbc") \
+        .option("url","jdbc:postgresql://localhost:5432/dvdrental") \
+        .option("dbtable", "staff") \
+        .option("user", "postgres") \
+        .option("password","<password>") \
+        .option("driver", "org.postgresql.Driver") \
+        .load()
+    return staff_df
+
+#transforming tables
+def transform_avg_amount(payment_df, staff_df):
+    avg_amount = payment_df.groupBy("StaffID").mean("Amount")
+    df = staff_df.join(avg_amount, staff_df.PaymentID == avg_amount.ID )
+    df = df.drop("StaffID")
+    return df
+
+def load_df_to_db(df):
+    mode = "overwrite"
+    url = "jdbc:postgresql://localhost:5432/dvdrental"
+    properties = {
+        "user": "postgres",
+        "password": "<password>",
+        "driver": "org.postgresql.Driver"
+    }
+    df.write.jdbc(url = url,
+                  table = "avg_amount",
+                  mode = mode,
+                  properties = properties)
+
+if __name__ == "__main__":
+    payment_df = extract_payment_df()
+    staff_df = extract_staff_df()
+    amount_df = transform_avg_amount(payment_df, staff_df)
+    load_df_to_db(amount_df)
+
+
+
